@@ -7,8 +7,8 @@
  * print_r($index);
  * echo "\nVals array\n";
  * print_r($vals);
- * 
- * 
+ *
+ *
  * @TODO
  * - Der lokale Cache macht durch Filtern und Listen-/Baumansicht keinen Sinn mehr
  */
@@ -23,7 +23,7 @@ class Webdav_Client {
 	public $ignore = array ();
 	
 	// Debug-Moduls ein/aus: Es werden alle Systemkommandos direkt ausgegeben
-	public $debug = TRUE;
+	public $debug = FALSE;
 	
 	/**
 	 * @TODO:
@@ -81,7 +81,7 @@ class Webdav_Client {
 		}
 		
 		// Command erzeugen
-		$cmd = 'curl -k -X PROPFIND -u "' . $this->username . '":"' . $this->password . '" ' . $this->host . rawurlencode ( $dir );
+		$cmd = 'curl -k -X PROPFIND -u ' . escapeshellarg ( $this->username ) . ':' . escapeshellarg ( $this->password ) . '" ' . escapeshellarg ( $this->host . rawurlencode ( $dir ) );
 		$response = $this->run ( $cmd );
 		
 		// Fix: https://github.com/christian-putzke/CardDAV-PHP/issues/8
@@ -246,7 +246,7 @@ class Webdav_Client {
 		}
 		
 		// Command erzeugen
-		$cmd = 'curl -k --user "' . $this->username . '":"' . $this->password . '" ' . $this->host . rawurlencode ( $file );
+		$cmd = 'curl -k --user ' . escapeshellarg ( $this->username ) . ':' . escapeshellarg ( $this->password ) . ' ' . escapeshellarg ( $this->host . rawurlencode ( $file ) );
 		// --digest
 		
 		if (! $destination) {
@@ -254,7 +254,7 @@ class Webdav_Client {
 			// header ( 'Content-Type: application/pdf' );
 			// header ( 'Content-Disposition: attachment; filename="downloaded.pdf"' );
 		} else {
-			$cmd .= ' --output ' . $destination;
+			$cmd .= ' --output ' . escapeshellarg ( $destination );
 		}
 		return $this->run ( $cmd );
 	}
