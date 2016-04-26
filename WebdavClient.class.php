@@ -7,6 +7,10 @@
  * print_r($index);
  * echo "\nVals array\n";
  * print_r($vals);
+ * 
+ * 
+ * @TODO
+ * - Der lokale Cache macht durch Filtern und Listen-/Baumansicht keinen Sinn mehr
  */
 class Webdav_Client {
 	private $username;
@@ -62,8 +66,10 @@ class Webdav_Client {
 	 *         [content_type] => Mime-Type der Datei
 	 *         === Nur bei Verzeichnissen
 	 *         [free_space] => ???
+	 * @param string $filter
+	 *        	[all|files|directories]
 	 */
-	public function list_files($dir = "") {
+	public function list_files($dir = "", $filter = "all") {
 		// Parameter prüfen und modifizieren
 		if ($dir [0] == "/") {
 			$dir = substr ( $dir, 1 );
@@ -112,12 +118,29 @@ class Webdav_Client {
 				$file ["size"] = $node ["propstat"] ["prop"] ["getcontentlength"];
 				$file ["content_type"] = $node ["propstat"] ["prop"] ["getcontenttype"];
 			}
-			
+			/*
+			 * switch ($filter) {
+			 * case "files" :
+			 * if ($file ["type"] == "file")
+			 * $return [] = $file;
+			 * break;
+			 * case "directories" :
+			 * if ($file ["type"] == "directory")
+			 * $return [] = $file;
+			 * break;
+			 * default :
+			 * case "all" :
+			 * $return [] = $file;
+			 * break;
+			 * }
+			 */
 			$return [] = $file;
 		}
 		
 		// Entferne erstes Element, da dies das Element selbst ist, wie brauchen aber nur die Tochterelemente
+		// if ($filter == "directory" || $filter == "all") {
 		array_shift ( $return );
+		// }
 		
 		// Cache schreiben
 		$this->cache ["list"] [$dir] = $return;
@@ -129,8 +152,12 @@ class Webdav_Client {
 	 * Liest einen kompletten Baum rekursiv aus und liefert alle Dateien und Ordner zurück
 	 *
 	 * @param string $dir        	
+	 * @param string $list
+	 *        	Gibt an, ob die Ausgabe hierarchisch oder als Liste erfolgen soll
+	 * @param string $filter
+	 *        	[all|files|directories]
 	 */
-	public function list_files_recursive($dir = "") {
+	public function list_files_recursive($dir = "", $list = FALSE, $filter = "all") {
 		// Parameter prüfen und modifizieren
 		if ($dir [0] == "/") {
 			$dir = substr ( $dir, 1 );
@@ -142,10 +169,57 @@ class Webdav_Client {
 		}
 		
 		// Alle Dateien auslesen
-		$return = $this->list_files ( $dir );
-		foreach ( $return as &$file ) {
-			if ($file ["type"] == "directory") {
-				$file ["contains"] = $this->list_files_recursive ( $file ["path"] );
+		$return = array ();
+		$files = $this->list_files ( $dir, "all" );
+		if ($list === TRUE) {
+			// Erstelle eine Liste (eindimensionales Array)
+			foreach ( $files as &$file ) {
+				if ($file ["type"] == "directory") {
+					
+					// $return [] = $file;
+					$files_rec = $this->list_files_recursive ( $file ["path"], $list, $filter );
+					foreach ( $files_rec as $file_rec ) {
+						if ($file_rec ["type"] == "file")
+							$return [] = $file_rec;
+					}
+				} else {
+					switch ($filter) {
+						case "all" :
+						case "files" :
+							$return [] = $file;
+							break;
+						case "directories" :
+							break;
+						default :
+							if (preg_match ( $filter, $file ["path"] ) or $file ["content_type"] == $filter) {
+								$return [] = $file;
+							}
+							break;
+					}
+				}
+			}
+		} else {
+			// Erstelle einen Baum (mehrdimensionales array)
+			foreach ( $files as $file ) {
+				if ($file ["type"] == "directory") {
+					$file ["contains"] = $this->list_files_recursive ( $file ["path"], $list, $filter );
+					if (! ($filter != "directories" && count ( $file ["contains"] ) == 0))
+						$return [] = $file;
+				} else {
+					switch ($filter) {
+						case "all" :
+						case "files" :
+							$return [] = $file;
+							break;
+						case "directories" :
+							break;
+						default :
+							if (preg_match ( $filter, $file ["path"] ) or $file ["content_type"] == $filter) {
+								$return [] = $file;
+							}
+							break;
+					}
+				}
 			}
 		}
 		
