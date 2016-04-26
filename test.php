@@ -10,3 +10,4 @@ $wc->debug = false;
 print_r ( $wc->list_files ( "/Folder/Folder 2/" ) );
 print_r ( $wc->list_files_recursive ( "/Folder/" ) );
 print_r ( $wc->get_file ( "/Folder 2/Filename.doc" ) );
+print_r ( $wc->list_files_recursive ( "/Folder/", TRUE, "#^(.+)(\.pdf)$#" ) );
